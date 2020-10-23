@@ -57,7 +57,7 @@ done
 After starting the server, start the nodes by executing:
 
 ```
-bash starter.sh
+bash jesuit.sh
 ```
 
 After this, the program will commence and run until consensus is reached, upon which server.go will write:
