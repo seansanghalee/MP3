@@ -1,5 +1,5 @@
-for i in {5001..5020}
+for i in {5001..5010}
 do
     go run node.go $i &
-    sleep .5
+    sleep 1
 done
