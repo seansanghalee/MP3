@@ -105,10 +105,18 @@ receiver package contains methods having to do with receiving tcp messages. It c
 ### Sender
 sender package contains methods having to do with sending tcp messages.  It contains Dial(), which establishes TCP connections, UnicastSend(), which sends messsages, delay() which prevents race conditions, and SendExit(), which the server uses to indicate that consensus has been reached. 
 
+# Analysis
+![Trial Results](data.jpeg)
+
+From our analysis, we can conclude that as N becomes larger or f becomes larger, both have negative impacts on the performance of the consensus routine.  Referring to the chart, as n or f became increasingly large, the amount of seconds and rounds it took for the routine to finsh increased as well.
+
+We obseved that once the amount of crashed nodes == f, consensus is reached in round f + 1. This is because when all possible nodes fail, the remaining nonfaulty nodes all exchanged messages with each other next round. Then, they shared the same average (updated state) and the consensus is reached.
+
+One thing to note is that since node crashes happen randomly (with 20% chance in our model), it is hard to say that our data reflects accurate result. During the rounds where nodes crashed early, we saw that the consensus was also reached early due to the reason previously mentioned. Therefore, if all possible nodes fail, the runtime of program was significantly reduced even when N was bigger. In the future, we would like to be able to run monte carlo simulations with N values ranging from N = 1 to N >> 1 and f ranging from f = 1 to f >> 1.  We believe that this would give better analysis.
 
 # Notes
 We manually indicated which nodes can be faulty or not. Ideally, this would happen compeletely randomly and programatically. 
 
-Instead of continually receiving and acting on messages, we read messages into a queue array and then only process the first N-f messages.  Although this isn't a perfect representation of real-world consensus routines, this works for this MP.
+Instead of continually receiving and acting on messages, we read messages into a queue array and then only process the first N-f messages.  Although this isn't a perfect representation of real-world consensus routines, this works for this MP. With more time, we would like to implement our code so that each process will listen to the incoming messages simulateneously and disregard those come after the (N-f)th message.
 
-
+At first, each process connected with itself so that we could simulate "nodes sending messages to itself", but after discussing the design with Professor Tseng, we decided to instead receive N-f-1 messages then add its state y to the array (queue).
