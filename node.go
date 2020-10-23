@@ -8,20 +8,24 @@ import (
 	"MP3_2/sender"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 )
 
 func main() {
 	var (
-		N, f            int      // N: Total number of nodes, f: Upper bound for the number of faulty nodes
-		IDs, IPs, ports []string // IDs: Process IDs of nodes, IPs/ports: IPs/ports for processes
-		port, ID        string   // ID: ID of this process, port: port number of this process
+		N, f                         int      // N: Total number of nodes, f: Upper bound for the number of faulty nodes
+		IDs, IPs, ports, faultyOrNot []string // IDs: Process IDs of nodes, IPs/ports: IPs/ports for processes
+		port, ID                     string   // ID: ID of this process, port: port number of this process
+		faulty                       = false  // faulty: true if faulty node, false otherwise
 	)
 
-	N, f, IDs, IPs, ports = config.Configure()
+	N, f, IDs, IPs, ports, faultyOrNot = config.Configure()
 
-	port = config.GetPort()
-	ID = config.GetID(port, ports, IDs)
+	//port = config.GetPort()
+	port = os.Args[1]
+	ID = config.GetIDFromPort(port, ports, IDs)
+	faulty = config.GetFaultyFromPort(port, ports, faultyOrNot)
 
 	nodes := make(map[string]net.Conn) // create a map to store connections to other nodes {key: process id, value: TCP connection}
 
@@ -38,13 +42,14 @@ func main() {
 	for len(nodes) < N {
 	} // blocks until all nodes are connected
 
-	fmt.Println("---Map---")
-	for key, value := range nodes {
-		fmt.Println("ID:", key, ", net.Conn:", value)
+	helper.DisplayMap(nodes)
+	if faulty {
+		fmt.Println("THIS IS A FAULTY NODE")
 	}
-	fmt.Println("---------")
 
 	y, r := helper.Initialize()
+
+	go receiver.ListenForExit(nodes)
 
 	for {
 		states := []float64{}
@@ -60,7 +65,7 @@ func main() {
 			if key != "0" { // don't receive from server
 				toReceive := message.Message{}
 				receiver.UnicastReceive(value, &toReceive)
-				fmt.Println("Received y:", toReceive.State, ", r:", toReceive.Round, "from", key)
+				//fmt.Println("Received y:", toReceive.State, ", r:", toReceive.Round, "from", key)
 				if toReceive.Round == r {
 					states = append(states, toReceive.State)
 				}
@@ -68,22 +73,19 @@ func main() {
 		} // multicast_receive
 
 		states = append(states, y)
-		fmt.Println(states)
+		helper.PrintRoundInfo(y, r, states)
 
 		// update y and r
-		//y = helper.Average(states[0 : N-f])
+		y = helper.Average(states[0 : N-f])
+		fmt.Println("***Updated y: ", y)
+
+		// send server the updated value
+		m := message.Message{y, r}
+		sender.UnicastSend(nodes["0"], m)
 		r++
 
-		if r == 2 {
-			fmt.Println("DONE")
-			for {
-
-			}
+		if faulty {
+			helper.NodeCrash()
 		}
-		//fmt.Printf("Updated y = %v\n", y)
-		fmt.Printf("Round: %v\n", r)
-		// send server the updated value
-
 	}
-	fmt.Println(f)
 }
